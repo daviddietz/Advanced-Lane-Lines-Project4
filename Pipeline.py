@@ -2,15 +2,11 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from PIL import Image
 import glob
-import logging
-
-logger = logging.getLogger('Pipline_log')
 
 calibrationImages = glob.glob("camera_cal/calibration*.jpg")
 
-testPath = "camera_cal/calibration3.jpg"
+testPath = "testImage.jpg"
 testImage = cv2.imread(testPath)
 
 object_points = []  # 3d point in real world space
@@ -43,11 +39,13 @@ ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector
 #
 # f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
 # f.tight_layout()
-# ax1.imshow(testImage)
+# ax1.imshow(cv2.cvtColor(testImage, cv2.COLOR_BGR2RGB))
 # ax1.set_title('Original Image', fontsize=30)
-# ax2.imshow(testUndistored)
+# ax2.imshow(cv2.cvtColor(testUndistored, cv2.COLOR_BGR2RGB))
 # ax2.set_title('Undistorted Image', fontsize=30)
 # #plt.show(block=True)
 # #plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
 #
-# f.savefig('Undistort_test.png')
+# f.savefig('Undistort_test2.png')
+
+
