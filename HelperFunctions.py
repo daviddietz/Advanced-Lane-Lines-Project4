@@ -271,6 +271,7 @@ class HelperFunctions:
         return left_curverad, right_curverad
 
     def sanityCheck(leftx, rightx, left_curverad, right_curverad):
+        #TODO This needs to be worked out better
         midpointFromLeft = (((min(leftx) + max(rightx)) / 2) - min(leftx)) * (3.7 / 700)
 
         if not (midpointFromLeft < 2):
