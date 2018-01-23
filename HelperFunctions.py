@@ -58,6 +58,34 @@ class HelperFunctions:
 
         return combined_binary
 
+    def region_of_interest(img):
+        imageShape = img.shape
+
+        # currently vertices are hardcoded for project images. These should be calculated or part of camera calibration
+        vertices = np.array([[(150, imageShape[0]), (600, 425), (725, 425), (1250, imageShape[0])]], dtype=np.int32)
+        """
+        Applies an image mask.
+
+        Only keeps the region of the image defined by the polygon
+        formed from `vertices`. The rest of the image is set to black.
+        """
+        # defining a blank mask to start with
+        mask = np.zeros_like(img)
+
+        # defining a 3 channel or 1 channel color to fill the mask with depending on the input image
+        if len(imageShape) > 2:
+            channel_count = imageShape[2]  # i.e. 3 or 4 depending on your image
+            ignore_mask_color = (255,) * channel_count
+        else:
+            ignore_mask_color = 255
+
+        # filling pixels inside the polygon defined by "vertices" with the fill color
+        cv2.fillPoly(mask, vertices, ignore_mask_color)
+
+        # returning the image only where mask pixels are nonzero
+        masked_image = cv2.bitwise_and(img, mask)
+        return masked_image
+
     def performPerspectiveTransform(image, source, destination):
         m = cv2.getPerspectiveTransform(source, destination)
         inverse_perspective_transform = cv2.getPerspectiveTransform(destination, source)
@@ -153,7 +181,7 @@ class HelperFunctions:
         out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
 
         left_curve, right_curve = HelperFunctions.calculateRadiusCurvature(leftx, rightx, lefty, righty)
-        good = HelperFunctions.sanityCheck(leftx, rightx, left_curve, right_curve)
+        # good = HelperFunctions.sanityCheck(leftx, rightx, left_curve, right_curve)
 
         leftLine.allx = leftx
         leftLine.ally = lefty
@@ -202,6 +230,7 @@ class HelperFunctions:
         # Fit a second order polynomial to each
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
+
         # Generate x and y values for plotting
         ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
