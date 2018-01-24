@@ -172,36 +172,51 @@ class HelperFunctions:
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        leftLine.current_fit = left_fit
+        rightLine.current_fit = right_fit
+
         # Generate x and y values for plotting
         ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
         right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
-        out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-        out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        test_left_line = leftLine
+        test_right_line = rightLine
+        if leftLine.iterations == 1:
+            leftLine.bestx = left_fitx
+        else:
+            leftLine.bestx = (np.array(leftLine.bestx) + np.array(left_fitx)) / 2
+        if rightLine.iterations == 1:
+            rightLine.bestx = right_fitx
+        else:
+            rightLine.bestx = (np.array(rightLine.bestx) + np.array(right_fitx)) / 2
+        leftLine.iterations = leftLine.iterations + 1
+        rightLine.iterations = rightLine.iterations + 1
+        #
+        #
+        # out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
 
-        left_curve, right_curve = HelperFunctions.calculateRadiusCurvature(leftx, rightx, lefty, righty)
+        #left_curve, right_curve = HelperFunctions.calculateRadiusCurvature(leftx, rightx, lefty, righty)
         # good = HelperFunctions.sanityCheck(leftx, rightx, left_curve, right_curve)
 
-        leftLine.allx = leftx
-        leftLine.ally = lefty
-        rightLine.allx = rightx
-        rightLine.ally = righty
-        leftLine.bestx = left_fitx
-        rightLine.bestx = right_fitx
+        # leftLine.allx = leftx
+        # leftLine.ally = lefty
+        # rightLine.allx = rightx
+        # rightLine.ally = righty
+        # leftLine.bestx = left_fitx
+        # rightLine.bestx = right_fitx
 
-        leftLine.detected = True
-        rightLine.detected = True
+        # leftLine.detected = True
+        # rightLine.detected = True
         # plt.imshow(out_img)
         # plt.show(block=True)
         # plt.plot(left_fitx, ploty, color='yellow')
         # plt.plot(right_fitx, ploty, color='yellow')
         # plt.xlim(0, 1280)
         # plt.ylim(720, 0)
-        leftLine.current_fit = left_fit
-        rightLine.current_fit = right_fit
-        leftLine.iterations = 1
-        return ploty
+
+        #return ploty
 
     def findLaneLinesSkipSlidingWindow(binary_warped):
         # Assume you now have a new warped binary image
@@ -231,28 +246,31 @@ class HelperFunctions:
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        leftLine.current_fit = left_fit
+        rightLine.current_fit = right_fit
+
         # Generate x and y values for plotting
-        ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
-        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-        right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
-
-        # Create an image to draw on and an image to show the selection window
-        out_img = np.dstack((binary_warped, binary_warped, binary_warped)) * 255
-        window_img = np.zeros_like(out_img)
-        # Color in left and right line pixels
-        out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-        out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-
-        # Generate a polygon to illustrate the search window area
-        # And recast the x and y points into usable format for cv2.fillPoly()
-        left_line_window1 = np.array([np.transpose(np.vstack([left_fitx - margin, ploty]))])
-        left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([left_fitx + margin,
-                                                                        ploty])))])
-        left_line_pts = np.hstack((left_line_window1, left_line_window2))
-        right_line_window1 = np.array([np.transpose(np.vstack([right_fitx - margin, ploty]))])
-        right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([right_fitx + margin,
-                                                                         ploty])))])
-        right_line_pts = np.hstack((right_line_window1, right_line_window2))
+        # ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
+        # left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+        # right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+        #
+        # # Create an image to draw on and an image to show the selection window
+        # out_img = np.dstack((binary_warped, binary_warped, binary_warped)) * 255
+        # window_img = np.zeros_like(out_img)
+        # # Color in left and right line pixels
+        # out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        #
+        # # Generate a polygon to illustrate the search window area
+        # # And recast the x and y points into usable format for cv2.fillPoly()
+        # left_line_window1 = np.array([np.transpose(np.vstack([left_fitx - margin, ploty]))])
+        # left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([left_fitx + margin,
+        #                                                                 ploty])))])
+        # left_line_pts = np.hstack((left_line_window1, left_line_window2))
+        # right_line_window1 = np.array([np.transpose(np.vstack([right_fitx - margin, ploty]))])
+        # right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([right_fitx + margin,
+        #                                                                  ploty])))])
+        # right_line_pts = np.hstack((right_line_window1, right_line_window2))
 
         # Draw the lane onto the warped blank image
         # cv2.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
@@ -264,20 +282,20 @@ class HelperFunctions:
         # plt.plot(right_fitx, ploty, color='yellow')
         # plt.xlim(0, 1280)
         # plt.ylim(720, 0)
-        left_curve, right_curve = HelperFunctions.calculateRadiusCurvature(leftx, rightx, lefty, righty)
-        good = HelperFunctions.sanityCheck(leftx, rightx, left_curve, right_curve)
-
-        if good:
-            leftLine.allx = leftx
-            leftLine.ally = lefty
-            rightLine.allx = rightx
-            rightLine.ally = righty
-            leftLine.current_fit = left_fit
-            rightLine.current_fit = right_fit
-            leftLine.bestx = left_fitx
-            rightLine.bestx = right_fitx
-
-        return ploty
+        # left_curve, right_curve = HelperFunctions.calculateRadiusCurvature(leftx, rightx, lefty, righty)
+        # good = HelperFunctions.sanityCheck(leftx, rightx, left_curve, right_curve)
+        #
+        # if good:
+        #     leftLine.allx = leftx
+        #     leftLine.ally = lefty
+        #     rightLine.allx = rightx
+        #     rightLine.ally = righty
+        #     leftLine.current_fit = left_fit
+        #     rightLine.current_fit = right_fit
+        #     leftLine.bestx = left_fitx
+        #     rightLine.bestx = right_fitx
+        #
+        # return ploty
 
     def calculateRadiusCurvature(leftx, rightx, lefty, righty):
         # Define y-value where we want radius of curvature
@@ -314,7 +332,9 @@ class HelperFunctions:
         rightLine.radius_of_curvature = right_curverad
         return True
 
-    def drawLaneLineOnOriginalImage(warped_binary, undistored_image, inverse_perspective, ploty):
+    def drawLaneLineOnOriginalImage(warped_binary, undistored_image, inverse_perspective):
+        ploty = np.linspace(0, warped_binary.shape[0] - 1, warped_binary.shape[0])
+
         # Create an image to draw the lines on
         warp_zero = np.zeros_like(warped_binary).astype(np.uint8)
         color_warp = np.dstack((warp_zero, warp_zero, warp_zero))

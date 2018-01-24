@@ -73,15 +73,10 @@ class Pipline:
 
         warped_binary_test, perspective_M, inverse_perspective = HelperFunctions.performPerspectiveTransform(maskedImage,
                                                                                                              src, dst)
+        HelperFunctions.findLaneLinesFromBinaryImage(warped_binary_test)
 
-        if not leftLine.detected or not rightLine.detected:
-            ploty = HelperFunctions.findLaneLinesFromBinaryImage(
-                warped_binary_test)
-        else:
-            ploty = HelperFunctions.findLaneLinesSkipSlidingWindow(
-                warped_binary_test)
 
-        return HelperFunctions.drawLaneLineOnOriginalImage(warped_binary_test, imageUndistorted, inverse_perspective, ploty)
+        return HelperFunctions.drawLaneLineOnOriginalImage(warped_binary_test, imageUndistorted, inverse_perspective)
 
 
     process_image(testImage)
