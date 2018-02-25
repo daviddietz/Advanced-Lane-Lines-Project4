@@ -3,7 +3,7 @@ import numpy as np
 
 # Define a class to receive the characteristics of each line detection
 class Line:
-    def __init__(self, detected=False, recent_xfitted=None, bestx=[], best_fit=None, current_fit=None, radius_of_curvature=None, line_base_pos=None, diffs=np.array([0, 0, 0], dtype='float'), allx=None, ally=None, iterations=1):
+    def __init__(self, detected=False, recent_xfitted=None, bestx=[], best_fit=None, current_fit=None, radius_of_curvature=None, line_base_pos=None, diffs=np.array([0, 0, 0], dtype='float'), allx=None, ally=None, iterations=1, ploty=None):
         # was the line detected in the last iteration?
         self.detected = detected
 
@@ -39,6 +39,8 @@ class Line:
         self.ally = ally
 
         self.iterations = iterations
+
+        self.ploty = ploty
 
 
 leftLine = Line()
