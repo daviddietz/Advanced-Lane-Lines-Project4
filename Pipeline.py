@@ -11,8 +11,8 @@ class Pipeline:
 
     HelperFunctions().runTestImages()
 
-    # project_video = 'testVideo2.mp4'
-    # clip1 = VideoFileClip("project_video.mp4")
-    # test_clip = clip1.fl_image(HelperFunctions().process_image)
-    # test_clip.write_videofile(project_video, audio=False)
+    project_video = 'testVideo2.mp4'
+    clip1 = VideoFileClip("project_video.mp4")
+    test_clip = clip1.fl_image(HelperFunctions().process_image)
+    test_clip.write_videofile(project_video, audio=False)
 

@@ -40,8 +40,6 @@ class Line:
 
         self.iterations = iterations
 
-        self.ploty = ploty
-
 
 leftLine = Line()
 rightLine = Line()

@@ -9,9 +9,6 @@ from Line import leftLine, rightLine
 
 
 class HelperFunctions(object):
-    def setMetaData(self):
-        # TODO Fix this calculation
-        leftLine.line_base_pos = min(leftLine.current_fit) + max(rightLine.current_fit) / 2
 
     @staticmethod
     def setCameraSettings(ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector):
@@ -77,6 +74,7 @@ class HelperFunctions(object):
     @staticmethod
     def region_of_interest(img):
         imageShape = img.shape
+        imageInfo.imageShape = imageShape
 
         # currently vertices are hardcoded for project images. These should be calculated or part of camera calibration
         vertices = np.array([[(150, imageShape[0]), (600, 425), (725, 425), (1250, imageShape[0])]], dtype=np.int32)
@@ -130,7 +128,7 @@ class HelperFunctions(object):
         rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
         # Choose the number of sliding windows
-        nwindows = 9
+        nwindows = 10
 
         # Set height of windows
         window_height = np.int(binary_warped.shape[0] / nwindows)
@@ -148,7 +146,7 @@ class HelperFunctions(object):
         margin = 100
 
         # Set minimum number of pixels found to recenter window
-        minpix = 50
+        minpix = 25
 
         # Create empty lists to receive left and right lane pixel indices
         left_lane_inds = []
@@ -196,7 +194,6 @@ class HelperFunctions(object):
         rightLine.current_fit = right_fit
 
         # Generate x and y values for plotting
-        imageInfo.ploty = np.linspace(0, binary_warped.shape[0] - 1, binary_warped.shape[0])
         left_fitx = left_fit[0] * imageInfo.ploty ** 2 + left_fit[1] * imageInfo.ploty + left_fit[2]
         right_fitx = right_fit[0] * imageInfo.ploty ** 2 + right_fit[1] * imageInfo.ploty + right_fit[2]
 
@@ -251,51 +248,53 @@ class HelperFunctions(object):
         right_fitx = right_fit[0] * imageInfo.ploty ** 2 + right_fit[1] * imageInfo.ploty + right_fit[2]
 
         left_curve_radius, right_curve_radius = self.calculateRadiusCurvature(left_fitx, right_fitx)
-
         good = self.sanityCheck(left_curve_radius, right_curve_radius)
 
         if good:
             leftLine.bestx = left_fitx
             rightLine.bestx = right_fitx
+            leftLine.radius_of_curvature = left_curve_radius
+            rightLine.radius_of_curvature = right_curve_radius
             leftLine.detected = True
             rightLine.detected = True
 
     @staticmethod
     def calculateRadiusCurvature(leftx, rightx):
+        leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
+        rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
+
+        # Fit a second order polynomial to pixel positions in each fake lane line
+        left_fit = np.polyfit(imageInfo.ploty, leftx, 2)
+        left_fitx = left_fit[0] * imageInfo.ploty ** 2 + left_fit[1] * imageInfo.ploty + left_fit[2]
+        right_fit = np.polyfit(imageInfo.ploty, rightx, 2)
+        right_fitx = right_fit[0] * imageInfo.ploty ** 2 + right_fit[1] * imageInfo.ploty + right_fit[2]
 
         # Define y-value where we want radius of curvature
         # I'll choose the maximum y-value, corresponding to the bottom of the image
         y_eval = np.max(imageInfo.ploty)
-        # left_curverad = ((1 + (
-        #     2 * leftLine.current_fit[0] * y_eval + leftLine.current_fit[1]) ** 2) ** 1.5) / np.absolute(
-        #     2 * leftLine.current_fit[0])
-        # right_curverad = ((1 + (
-        #     2 * rightLine.current_fit[0] * y_eval + rightLine.current_fit[1]) ** 2) ** 1.5) / np.absolute(
-        #     2 * rightLine.current_fit[0])
-        # print(left_curverad, right_curverad)
-        # Example values: 1926.74 1908.48
 
         # Define conversions in x and y from pixels space to meters
-        ym_per_pix = 30 / y_eval  # meters per pixel in y dimension
-        xm_per_pix = 3.7 / y_eval  # meters per pixel in x dimension
+        ym_per_pix = 30 / 720  # meters per pixel in y dimension
+        xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
 
         # Fit new polynomials to x,y in world space
         left_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, leftx * xm_per_pix, 2)
         right_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, rightx * xm_per_pix, 2)
-
         # Calculate the new radii of curvature
         left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * left_fit_cr[0])
         right_curverad = (
-                             (1 + (
-                                 2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[
-                                     1]) ** 2) ** 1.5) / np.absolute(
+                         (1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * right_fit_cr[0])
-        return left_curverad, right_curverad
+
+        return round(left_curverad, 1), round(right_curverad, 1)
 
     def sanityCheck(self, left_curverad, right_curverad):
-        # TODO This needs to be worked out
+        # TODO This needs to be worked out better
+
         # Check for similar curvature
+        if abs(left_curverad - right_curverad) > 500:
+            return False
 
         # Check for distance apart
 
@@ -305,16 +304,19 @@ class HelperFunctions(object):
 
     @staticmethod
     def drawLaneLineOnOriginalImage(warped_binary, undistored_image, inverse_perspective):
-        ploty = np.linspace(0, warped_binary.shape[0] - 1, warped_binary.shape[0])
-
         # Create an image to draw the lines on
         warp_zero = np.zeros_like(warped_binary).astype(np.uint8)
         color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 
         # Recast the x and y points into usable format for cv2.fillPoly()
-        pts_left = np.array([np.transpose(np.vstack([leftLine.bestx, ploty]))])
-        pts_right = np.array([np.flipud(np.transpose(np.vstack([rightLine.bestx, ploty])))])
+        pts_left = np.array([np.transpose(np.vstack([leftLine.bestx, imageInfo.ploty]))])
+        pts_right = np.array([np.flipud(np.transpose(np.vstack([rightLine.bestx, imageInfo.ploty])))])
         pts = np.hstack((pts_left, pts_right))
+
+        #TODO Figure out calculation of left line to center
+        xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
+        center = imageInfo.imageShape[1] / 2
+        leftLine.line_base_pos = xm_per_pix * (abs(pts_left[0][0].min() - center))
 
         # Draw the lane onto the warped blank image
         cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
@@ -327,16 +329,16 @@ class HelperFunctions(object):
         result = cv2.addWeighted(undistored_image, 1, newWarp, 0.3, 0)
         # Add text from Line object
         font = cv2.QT_FONT_NORMAL
-        cv2.putText(result, "Radius of Curvature Left = {} (m)".format(leftLine.radius_of_curvature), (10, 50), font, 1,
+        cv2.putText(result, "Radius of Curvature Left = {} (meters)".format(leftLine.radius_of_curvature), (10, 50), font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Radius of Curvature Right = {} (m)".format(rightLine.radius_of_curvature), (10, 125), font,
+        cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125), font,
                     1, (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Distance from left line to center: {}".format(leftLine.line_base_pos), (10, 200), font, 1,
+        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(leftLine.line_base_pos, 2)), (10, 200), font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        plt.imshow(result)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
+        # plt.imshow(result)
+        # plt.show(block=True)
+        # plt.xlim(0, 1280)
+        # plt.ylim(720, 0)
         return result
 
     def process_image(self, image):
@@ -349,6 +351,7 @@ class HelperFunctions(object):
 
         maskedImage = self.region_of_interest(binary_image)
 
+        # TODO Adjust these values and see if there is a better way to calculate
         src = np.float32(
             [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
              [((img_size[0] / 6) - 10), img_size[1]],
@@ -360,17 +363,18 @@ class HelperFunctions(object):
              [(img_size[0] * 3 / 4), img_size[1]],
              [(img_size[0] * 3 / 4), 0]])
 
-        warped_binary_test, perspective_M, inverse_perspective = self.performPerspectiveTransform(
+        warped_binary, perspective_M, inverse_perspective = self.performPerspectiveTransform(
             maskedImage,
             src, dst)
+
+        imageInfo.ploty = np.linspace(0, warped_binary.shape[0] - 1, warped_binary.shape[0])
+
         if leftLine.detected and rightLine.detected:
-            self.findLaneLinesSkipSlidingWindow(warped_binary_test)
+            self.findLaneLinesSkipSlidingWindow(warped_binary)
         else:
-            self.findLaneLinesFromBinaryImage(warped_binary_test)
+            self.findLaneLinesFromBinaryImage(warped_binary)
 
-        self.setMetaData()
-
-        return self.drawLaneLineOnOriginalImage(warped_binary_test, imageUndistorted, inverse_perspective)
+        return self.drawLaneLineOnOriginalImage(warped_binary, imageUndistorted, inverse_perspective)
 
     def runTestImages(self):
         testPath = "test_images/test3.jpg"
