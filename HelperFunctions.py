@@ -42,15 +42,24 @@ class HelperFunctions(object):
         return cv2.undistort(image, cam_matrix, dist_co, None, cam_matrix)
 
     @staticmethod
-    def createThresholdBinaryImage(img, sx_thresh=(30, 150)):
-        img = np.copy(img)
-        # plt.imshow(img)
-        # plt.show(block=True)
-        # plt.xlim(0, 1280)
-        # plt.ylim(720, 0)
-        HSV = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        HSL = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-        sensitivity_1 = 60
+    def createThresholdBinaryImage(img):
+        image = np.copy(img)
+        plt.imshow(img)
+        plt.show(block=True)
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
+
+        HSV = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+        HSV_H_channel = HSV[:, :, 0]
+        HSV_S_channel = HSV[:, :, 1]
+        HSV_V_channel = HSV[:, :, 2]
+
+        HLS = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
+        HLS_H_channel = HLS[:, :, 0]
+        HLS_L_channel = HLS[:, :, 1]
+        HLS_S_channel = HLS[:, :, 2]
+
+        sensitivity_1 = 65
         sensitivity_2 = 60
 
         # For yellow
@@ -58,27 +67,36 @@ class HelperFunctions(object):
 
         # For white
         white = cv2.inRange(HSV, (0, 0, 255 - sensitivity_1), (255, 20, 255))
-        white_2 = cv2.inRange(HSL, (0, 255 - sensitivity_2, 0), (255, 255, sensitivity_2))
-        white_3 = cv2.inRange(img, (200, 200, 200), (255, 255, 255))
+        white_2 = cv2.inRange(HLS, (0, 255 - sensitivity_2, 0), (255, 255, sensitivity_2))
+        white_3 = cv2.inRange(image, (200, 200, 200), (255, 255, 255))
 
         # Sobel x
-        sobelx = cv2.Sobel(HSL[:, :, 2], cv2.CV_64F, 1, 0)  # Take the derivative in x
-        abs_sobelx = np.absolute(sobelx)  # Absolute x derivative to accentuate lines away from horizontal
-        scaled_sobel = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
+        # sobelx = cv2.Sobel(HSV_V_channel, cv2.CV_64F, 1, 0)  # Take the derivative in x
+        # abs_sobelx = np.absolute(sobelx)  # Absolute x derivative to accentuate lines away from horizontal
+        # scaled_sobel = np.uint8(255 * abs_sobelx / np.max(abs_sobelx))
 
         # Threshold x gradient
-        sxbinary = np.zeros_like(scaled_sobel)
-        sxbinary[(scaled_sobel >= sx_thresh[0]) & (scaled_sobel <= sx_thresh[1])] = 1
+        # sx_thresh_min = 190
+        # sx_thresh_max = 255
+        # sxbinary = np.zeros_like(scaled_sobel)
+        # sxbinary[(scaled_sobel >= sx_thresh_min) & (scaled_sobel <= sx_thresh_max)] = 1
+
+        # Threshold color channel s
+        # s_thresh_min = 170
+        # s_thresh_max = 255
+        # s_binary = np.zeros_like(HLS_S_channel)
+        # s_binary[(HLS_S_channel >= s_thresh_min) & (HLS_S_channel <= s_thresh_max)] = 1
 
         # Combine the two binary thresholds
-        combined_binary = np.zeros_like(sxbinary)
+        # combined_binary = np.zeros_like(sxbinary)
+        # combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
 
-        binary_output = combined_binary | yellow | white | white_2 | white_3
+        binary_output = yellow | white | white_2 | white_3
 
-        # plt.imshow(binary_output)
-        # plt.show(block=True)
-        # plt.xlim(0, 1280)
-        # plt.ylim(720, 0)
+        plt.imshow(binary_output)
+        plt.show(block=True)
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
 
         return binary_output
 
@@ -346,10 +364,10 @@ class HelperFunctions(object):
                     1, (255, 255, 255), 2, cv2.LINE_4)
         cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(leftLine.line_base_pos, 2)), (10, 200), font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        # plt.imshow(result)
-        # plt.show(block=True)
-        # plt.xlim(0, 1280)
-        # plt.ylim(720, 0)
+        plt.imshow(result)
+        plt.show(block=True)
+        plt.xlim(0, 1280)
+        plt.ylim(720, 0)
         return result
 
     def process_image(self, image):
