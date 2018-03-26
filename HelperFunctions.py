@@ -44,11 +44,6 @@ class HelperFunctions(object):
     @staticmethod
     def createThresholdBinaryImage(img):
         image = np.copy(img)
-        plt.imshow(img)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
-
         HSV = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
         HSV_H_channel = HSV[:, :, 0]
         HSV_S_channel = HSV[:, :, 1]
@@ -92,11 +87,6 @@ class HelperFunctions(object):
         # combined_binary[(s_binary == 1) | (sxbinary == 1)] = 1
 
         binary_output = yellow | white | white_2 | white_3
-
-        plt.imshow(binary_output)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
 
         return binary_output
 
@@ -229,6 +219,9 @@ class HelperFunctions(object):
         leftLine.bestx = left_fitx
         rightLine.bestx = right_fitx
 
+        leftLine.best_fit = left_fit
+        rightLine.best_fit = right_fit
+
         left_curve_radius, right_curve_radius = self.calculateRadiusCurvature(left_fitx, right_fitx)
         leftLine.radius_of_curvature = left_curve_radius
         rightLine.radius_of_curvature = right_curve_radius
@@ -286,6 +279,8 @@ class HelperFunctions(object):
             rightLine.radius_of_curvature = right_curve_radius
             leftLine.detected = True
             rightLine.detected = True
+            leftLine.best_fit = left_fit
+            rightLine.best_fit = right_fit
 
     @staticmethod
     def calculateRadiusCurvature(leftx, rightx):
@@ -319,8 +314,6 @@ class HelperFunctions(object):
         return round(left_curverad, 1), round(right_curverad, 1)
 
     def sanityCheck(self, left_curverad, right_curverad):
-        # TODO This needs to be worked out better
-
         # Check for similar curvature
         if abs(left_curverad - right_curverad) > 500:
             return False
@@ -342,10 +335,13 @@ class HelperFunctions(object):
         pts_right = np.array([np.flipud(np.transpose(np.vstack([rightLine.bestx, imageInfo.ploty])))])
         pts = np.hstack((pts_left, pts_right))
 
-        #TODO Figure out calculation of left line to center
+        # Calculate center line offset
         xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
-        center = imageInfo.imageShape[1] / 2
-        leftLine.line_base_pos = xm_per_pix * (abs(pts_left[0][0].min() - center))
+        image_center = imageInfo.imageShape[1] / 2
+        LeftIntercept = leftLine.best_fit[0] * 720 ** 2 + leftLine.best_fit[1] * 720 + leftLine.best_fit[2]
+        RightIntercept = rightLine.best_fit[0] * 720 ** 2 + rightLine.best_fit[1] * 720 + rightLine.best_fit[2]
+        Center = (LeftIntercept + RightIntercept) / 2
+        CenterOffset = abs((Center - image_center) * xm_per_pix)
 
         # Draw the lane onto the warped blank image
         cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
@@ -362,12 +358,12 @@ class HelperFunctions(object):
                     (255, 255, 255), 2, cv2.LINE_4)
         cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125), font,
                     1, (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(leftLine.line_base_pos, 2)), (10, 200), font, 1,
+        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(CenterOffset, 2)), (10, 200), font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        plt.imshow(result)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
+        # plt.imshow(result)
+        # plt.show(block=True)
+        # plt.xlim(0, 1280)
+        # plt.ylim(720, 0)
         return result
 
     def process_image(self, image):
@@ -380,7 +376,6 @@ class HelperFunctions(object):
 
         maskedImage = self.region_of_interest(binary_image)
 
-        # TODO Adjust these values and see if there is a better way to calculate
         src = np.float32(
             [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
              [((img_size[0] / 6) - 10), img_size[1]],
