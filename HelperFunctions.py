@@ -38,7 +38,7 @@ class HelperFunctions(object):
         self.setCameraSettings(ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector)
 
     @staticmethod
-    def getUndistoredImage(image, cam_matrix, dist_co):
+    def getUndistortedImage(image, cam_matrix, dist_co):
         return cv2.undistort(image, cam_matrix, dist_co, None, cam_matrix)
 
     @staticmethod
@@ -91,7 +91,7 @@ class HelperFunctions(object):
         return binary_output
 
     @staticmethod
-    def region_of_interest(img):
+    def regionOfInterest(img):
         imageShape = img.shape
         imageInfo.imageShape = imageShape
 
@@ -121,10 +121,22 @@ class HelperFunctions(object):
         return masked_image
 
     @staticmethod
-    def performPerspectiveTransform(image, source, destination):
+    def performPerspectiveTransform(image):
+        image_size = (image.shape[1], image.shape[0])
+
+        source = np.float32(
+            [[(image_size[0] / 2) - 55, image_size[1] / 2 + 100],
+             [((image_size[0] / 6) - 10), image_size[1]],
+             [(image_size[0] * 5 / 6) + 60, image_size[1]],
+             [(image_size[0] / 2 + 55), image_size[1] / 2 + 100]])
+        destination = np.float32(
+            [[(image_size[0] / 4), 0],
+             [(image_size[0] / 4), image_size[1]],
+             [(image_size[0] * 3 / 4), image_size[1]],
+             [(image_size[0] * 3 / 4), 0]])
+
         m = cv2.getPerspectiveTransform(source, destination)
         inverse_perspective_transform = cv2.getPerspectiveTransform(destination, source)
-        image_size = (image.shape[1], image.shape[0])
         warped = cv2.warpPerspective(image, m, image_size, flags=cv2.INTER_LINEAR)
         return warped, m, inverse_perspective_transform
 
@@ -367,29 +379,15 @@ class HelperFunctions(object):
         return result
 
     def process_image(self, image):
-        imageUndistorted = self.getUndistoredImage(image, cameraSettings.camera_matrix,
+        imageUndistorted = self.getUndistortedImage(image, cameraSettings.camera_matrix,
                                                    cameraSettings.distortion_coefficients)
 
         binary_image = self.createThresholdBinaryImage(imageUndistorted)
 
-        img_size = (imageUndistorted.shape[1], imageUndistorted.shape[0])
-
-        maskedImage = self.region_of_interest(binary_image)
-
-        src = np.float32(
-            [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-             [((img_size[0] / 6) - 10), img_size[1]],
-             [(img_size[0] * 5 / 6) + 60, img_size[1]],
-             [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-        dst = np.float32(
-            [[(img_size[0] / 4), 0],
-             [(img_size[0] / 4), img_size[1]],
-             [(img_size[0] * 3 / 4), img_size[1]],
-             [(img_size[0] * 3 / 4), 0]])
+        maskedImage = self.regionOfInterest(binary_image)
 
         warped_binary, perspective_M, inverse_perspective = self.performPerspectiveTransform(
-            maskedImage,
-            src, dst)
+            maskedImage)
 
         imageInfo.ploty = np.linspace(0, warped_binary.shape[0] - 1, warped_binary.shape[0])
 
