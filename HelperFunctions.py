@@ -9,7 +9,6 @@ from Line import leftLine, rightLine
 
 
 class HelperFunctions(object):
-
     @staticmethod
     def setCameraSettings(ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector):
         cameraSettings.ret = ret
@@ -38,17 +37,12 @@ class HelperFunctions(object):
         self.setCameraSettings(ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector)
 
     @staticmethod
-    def getUndistoredImage(image, cam_matrix, dist_co):
+    def getUndistortedImage(image, cam_matrix, dist_co):
         return cv2.undistort(image, cam_matrix, dist_co, None, cam_matrix)
 
     @staticmethod
     def createThresholdBinaryImage(img):
         image = np.copy(img)
-        plt.imshow(img)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
-
         HSV = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
         HSV_H_channel = HSV[:, :, 0]
         HSV_S_channel = HSV[:, :, 1]
@@ -93,15 +87,10 @@ class HelperFunctions(object):
 
         binary_output = yellow | white | white_2 | white_3
 
-        plt.imshow(binary_output)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
-
         return binary_output
 
     @staticmethod
-    def region_of_interest(img):
+    def regionOfInterest(img):
         imageShape = img.shape
         imageInfo.imageShape = imageShape
 
@@ -131,10 +120,22 @@ class HelperFunctions(object):
         return masked_image
 
     @staticmethod
-    def performPerspectiveTransform(image, source, destination):
+    def performPerspectiveTransform(image):
+        image_size = (image.shape[1], image.shape[0])
+
+        source = np.float32(
+            [[(image_size[0] / 2) - 55, image_size[1] / 2 + 100],
+             [((image_size[0] / 6) - 10), image_size[1]],
+             [(image_size[0] * 5 / 6) + 60, image_size[1]],
+             [(image_size[0] / 2 + 55), image_size[1] / 2 + 100]])
+        destination = np.float32(
+            [[(image_size[0] / 4), 0],
+             [(image_size[0] / 4), image_size[1]],
+             [(image_size[0] * 3 / 4), image_size[1]],
+             [(image_size[0] * 3 / 4), 0]])
+
         m = cv2.getPerspectiveTransform(source, destination)
         inverse_perspective_transform = cv2.getPerspectiveTransform(destination, source)
-        image_size = (image.shape[1], image.shape[0])
         warped = cv2.warpPerspective(image, m, image_size, flags=cv2.INTER_LINEAR)
         return warped, m, inverse_perspective_transform
 
@@ -229,6 +230,9 @@ class HelperFunctions(object):
         leftLine.bestx = left_fitx
         rightLine.bestx = right_fitx
 
+        leftLine.best_fit = left_fit
+        rightLine.best_fit = right_fit
+
         left_curve_radius, right_curve_radius = self.calculateRadiusCurvature(left_fitx, right_fitx)
         leftLine.radius_of_curvature = left_curve_radius
         rightLine.radius_of_curvature = right_curve_radius
@@ -286,17 +290,13 @@ class HelperFunctions(object):
             rightLine.radius_of_curvature = right_curve_radius
             leftLine.detected = True
             rightLine.detected = True
+            leftLine.best_fit = left_fit
+            rightLine.best_fit = right_fit
 
     @staticmethod
     def calculateRadiusCurvature(leftx, rightx):
         leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
         rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
-
-        # Fit a second order polynomial to pixel positions in each fake lane line
-        left_fit = np.polyfit(imageInfo.ploty, leftx, 2)
-        left_fitx = left_fit[0] * imageInfo.ploty ** 2 + left_fit[1] * imageInfo.ploty + left_fit[2]
-        right_fit = np.polyfit(imageInfo.ploty, rightx, 2)
-        right_fitx = right_fit[0] * imageInfo.ploty ** 2 + right_fit[1] * imageInfo.ploty + right_fit[2]
 
         # Define y-value where we want radius of curvature
         # I'll choose the maximum y-value, corresponding to the bottom of the image
@@ -309,18 +309,17 @@ class HelperFunctions(object):
         # Fit new polynomials to x,y in world space
         left_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, leftx * xm_per_pix, 2)
         right_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, rightx * xm_per_pix, 2)
-        # Calculate the new radii of curvature
+        # Calculate the new radius of each curvature
         left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * left_fit_cr[0])
         right_curverad = (
-                         (1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+                             (1 + (
+                             2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * right_fit_cr[0])
 
         return round(left_curverad, 1), round(right_curverad, 1)
 
     def sanityCheck(self, left_curverad, right_curverad):
-        # TODO This needs to be worked out better
-
         # Check for similar curvature
         if abs(left_curverad - right_curverad) > 500:
             return False
@@ -342,10 +341,13 @@ class HelperFunctions(object):
         pts_right = np.array([np.flipud(np.transpose(np.vstack([rightLine.bestx, imageInfo.ploty])))])
         pts = np.hstack((pts_left, pts_right))
 
-        #TODO Figure out calculation of left line to center
+        # Calculate center line offset
         xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
-        center = imageInfo.imageShape[1] / 2
-        leftLine.line_base_pos = xm_per_pix * (abs(pts_left[0][0].min() - center))
+        image_center = imageInfo.imageShape[1] / 2
+        LeftIntercept = leftLine.best_fit[0] * 720 ** 2 + leftLine.best_fit[1] * 720 + leftLine.best_fit[2]
+        RightIntercept = rightLine.best_fit[0] * 720 ** 2 + rightLine.best_fit[1] * 720 + rightLine.best_fit[2]
+        Center = (LeftIntercept + RightIntercept) / 2
+        CenterOffset = abs((Center - image_center) * xm_per_pix)
 
         # Draw the lane onto the warped blank image
         cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
@@ -356,45 +358,34 @@ class HelperFunctions(object):
 
         # Combine the result with the original image
         result = cv2.addWeighted(undistored_image, 1, newWarp, 0.3, 0)
+
         # Add text from Line object
         font = cv2.QT_FONT_NORMAL
-        cv2.putText(result, "Radius of Curvature Left = {} (meters)".format(leftLine.radius_of_curvature), (10, 50), font, 1,
+        cv2.putText(result, "Radius of Curvature Left = {} (meters)".format(leftLine.radius_of_curvature), (10, 50),
+                    font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125), font,
+        cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125),
+                    font,
                     1, (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(leftLine.line_base_pos, 2)), (10, 200), font, 1,
+        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(CenterOffset, 2)), (10, 200),
+                    font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        plt.imshow(result)
-        plt.show(block=True)
-        plt.xlim(0, 1280)
-        plt.ylim(720, 0)
+        # plt.imshow(result)
+        # plt.show(block=True)
+        # plt.xlim(0, 1280)
+        # plt.ylim(720, 0)
         return result
 
     def process_image(self, image):
-        imageUndistorted = self.getUndistoredImage(image, cameraSettings.camera_matrix,
-                                                   cameraSettings.distortion_coefficients)
+        imageUndistorted = self.getUndistortedImage(image, cameraSettings.camera_matrix,
+                                                    cameraSettings.distortion_coefficients)
 
         binary_image = self.createThresholdBinaryImage(imageUndistorted)
 
-        img_size = (imageUndistorted.shape[1], imageUndistorted.shape[0])
-
-        maskedImage = self.region_of_interest(binary_image)
-
-        # TODO Adjust these values and see if there is a better way to calculate
-        src = np.float32(
-            [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-             [((img_size[0] / 6) - 10), img_size[1]],
-             [(img_size[0] * 5 / 6) + 60, img_size[1]],
-             [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-        dst = np.float32(
-            [[(img_size[0] / 4), 0],
-             [(img_size[0] / 4), img_size[1]],
-             [(img_size[0] * 3 / 4), img_size[1]],
-             [(img_size[0] * 3 / 4), 0]])
+        maskedImage = self.regionOfInterest(binary_image)
 
         warped_binary, perspective_M, inverse_perspective = self.performPerspectiveTransform(
-            maskedImage,
-            src, dst)
+            maskedImage)
 
         imageInfo.ploty = np.linspace(0, warped_binary.shape[0] - 1, warped_binary.shape[0])
 
@@ -431,6 +422,7 @@ class HelperFunctions(object):
         testImage7 = mpimg.imread(testPath)
 
         self.process_image(testImage)
+
         self.process_image(testImage1)
         self.process_image(testImage2)
         self.process_image(testImage3)

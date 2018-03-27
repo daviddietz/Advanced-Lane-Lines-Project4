@@ -9,10 +9,10 @@ class Pipeline:
 
     HelperFunctions().calibrateCamera(calibrationImages)
 
-    HelperFunctions().runTestImages()
+    #HelperFunctions().runTestImages()
 
-    # project_video = 'testVideo3.mp4'
-    # clip1 = VideoFileClip("project_video.mp4")
-    # test_clip = clip1.fl_image(HelperFunctions().process_image)
-    # test_clip.write_videofile(project_video, audio=False)
+    project_video = 'output_video.mp4'
+    clip1 = VideoFileClip("project_video.mp4")
+    test_clip = clip1.fl_image(HelperFunctions().process_image)
+    test_clip.write_videofile(project_video, audio=False)
 
