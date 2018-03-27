@@ -9,7 +9,6 @@ from Line import leftLine, rightLine
 
 
 class HelperFunctions(object):
-
     @staticmethod
     def setCameraSettings(ret, camera_matrix, distortion_coefficients, rotation_vector, translation_vector):
         cameraSettings.ret = ret
@@ -299,12 +298,6 @@ class HelperFunctions(object):
         leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
         rightx = rightx[::-1]  # Reverse to match top-to-bottom in y
 
-        # Fit a second order polynomial to pixel positions in each fake lane line
-        left_fit = np.polyfit(imageInfo.ploty, leftx, 2)
-        left_fitx = left_fit[0] * imageInfo.ploty ** 2 + left_fit[1] * imageInfo.ploty + left_fit[2]
-        right_fit = np.polyfit(imageInfo.ploty, rightx, 2)
-        right_fitx = right_fit[0] * imageInfo.ploty ** 2 + right_fit[1] * imageInfo.ploty + right_fit[2]
-
         # Define y-value where we want radius of curvature
         # I'll choose the maximum y-value, corresponding to the bottom of the image
         y_eval = np.max(imageInfo.ploty)
@@ -316,11 +309,12 @@ class HelperFunctions(object):
         # Fit new polynomials to x,y in world space
         left_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, leftx * xm_per_pix, 2)
         right_fit_cr = np.polyfit(imageInfo.ploty * ym_per_pix, rightx * xm_per_pix, 2)
-        # Calculate the new radii of curvature
+        # Calculate the new radius of each curvature
         left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * left_fit_cr[0])
         right_curverad = (
-                         (1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+                             (1 + (
+                             2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
             2 * right_fit_cr[0])
 
         return round(left_curverad, 1), round(right_curverad, 1)
@@ -364,13 +358,17 @@ class HelperFunctions(object):
 
         # Combine the result with the original image
         result = cv2.addWeighted(undistored_image, 1, newWarp, 0.3, 0)
+
         # Add text from Line object
         font = cv2.QT_FONT_NORMAL
-        cv2.putText(result, "Radius of Curvature Left = {} (meters)".format(leftLine.radius_of_curvature), (10, 50), font, 1,
+        cv2.putText(result, "Radius of Curvature Left = {} (meters)".format(leftLine.radius_of_curvature), (10, 50),
+                    font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125), font,
+        cv2.putText(result, "Radius of Curvature Right = {} (meters)".format(rightLine.radius_of_curvature), (10, 125),
+                    font,
                     1, (255, 255, 255), 2, cv2.LINE_4)
-        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(CenterOffset, 2)), (10, 200), font, 1,
+        cv2.putText(result, "Distance from left line to center: {} (meters)".format(round(CenterOffset, 2)), (10, 200),
+                    font, 1,
                     (255, 255, 255), 2, cv2.LINE_4)
         # plt.imshow(result)
         # plt.show(block=True)
@@ -380,7 +378,7 @@ class HelperFunctions(object):
 
     def process_image(self, image):
         imageUndistorted = self.getUndistortedImage(image, cameraSettings.camera_matrix,
-                                                   cameraSettings.distortion_coefficients)
+                                                    cameraSettings.distortion_coefficients)
 
         binary_image = self.createThresholdBinaryImage(imageUndistorted)
 
@@ -424,6 +422,7 @@ class HelperFunctions(object):
         testImage7 = mpimg.imread(testPath)
 
         self.process_image(testImage)
+
         self.process_image(testImage1)
         self.process_image(testImage2)
         self.process_image(testImage3)
